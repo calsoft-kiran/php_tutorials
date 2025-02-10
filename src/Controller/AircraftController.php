@@ -16,7 +16,7 @@ use Doctrine\ORM\EntityManagerInterface;
 final class AircraftController extends AbstractController
 {
     #[Route('/api/aircraft/list', name: 'aircraft_list')]
-    public function index(EntityManagerInterface $entityManager): Response
+    public function index(EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
 
@@ -43,7 +43,7 @@ final class AircraftController extends AbstractController
     }
 
     #[Route('/api/aircraft/create',name: 'aircraft_create',methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $entityManager): Response
+    public function create(Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
         if (!$user) {
@@ -69,7 +69,7 @@ final class AircraftController extends AbstractController
 
 
     #[Route('/api/aircraft/find/{id}',name: 'aircraft_find',methods:['get'])]
-    public function find(int $id,EntityManagerInterface $entityManager): Response
+    public function find(int $id,EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
 
@@ -93,24 +93,66 @@ final class AircraftController extends AbstractController
         }
     }
 
-    #[Route('/api/aircraft/update',name: 'aircraft_update',methods: ['POST'])]
-    public function update(): Response
+    #[Route('/api/aircraft/update/{id}',name: 'aircraft_update',methods: ['PUT', 'PATCH'])]
+    public function update(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
         if (!$user) {
             return new JsonResponse(['error' => 'User not authenticated'], 401);
-        }else {
+        } else {
+            $aircraft = $entityManager->getRepository(Aircraft::class)->find($id);
+
+            if (!$aircraft) {
+                return new JsonResponse(['error' => 'Aircraft not found'], Response::HTTP_NOT_FOUND);
+            }
+
+            // Decode JSON payload
+            $data = json_decode($request->getContent(), true);
+
+            if (isset($data['model'])) {
+                $aircraft->setModel($data['model']);
+            }
+
+            if (isset($data['manufacturer'])) {
+                $aircraft->setManufacturer($data['manufacturer']);
+            }
+
+            if (isset($data['max_range'])) {
+                $aircraft->setMaxRange($data['max_range']);
+            }
+
+            if (isset($data['engine_type'])) {
+                $aircraft->setEngineType($data['engine_type']);
+            }
+
+            if (isset($data['seatingCapacity'])) {
+                $aircraft->setSeatingCapacity($data['seatingCapacity']);
+            }
+
+            if (isset($data['firstFlightDate'])) {
+                $aircraft->setFirstFlightDate(new \DateTime($data['firstFlightDate']));
+            }
+
+            $entityManager->flush();
+
             return new JsonResponse([
-                'id' =>0,
-                'status' => 'success',
-                'status_code'=>200
-            ]);
+                'message' => 'Aircraft updated successfully',
+                'aircraft' => [
+                'model' => $aircraft->getModel(),
+                    'manufacturer' => $aircraft->getManufacturer(),
+                    'seating_capacity'=>$aircraft->getSeatingCapacity(),
+                    'max_range'=>$aircraft->getMaxRange(),
+                    'engine_type'=>$aircraft->getEngineType(),
+                    'first_flight_date'=>$aircraft->getFirstFlightDate()
+                ]
+            ], Response::HTTP_OK);
+
         }
     }
 
 
     #[Route('/api/aircraft/delete/{id}',name: 'aircraft_delete',methods:['delete'])]
-    public function delete(int $id,EntityManagerInterface $entityManager): Response
+    public function delete(int $id,EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
 
