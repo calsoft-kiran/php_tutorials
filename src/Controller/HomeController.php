@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 final class HomeController extends AbstractController
 {
     private TokenStorageInterface $tokenStorage;
-
+    const ERRORMSG = 'User not authenticated';
     public function __construct(TokenStorageInterface $tokenStorage)
     {
         $this->tokenStorage = $tokenStorage;
@@ -25,13 +25,13 @@ final class HomeController extends AbstractController
         $user = $this->tokenStorage->getToken()?->getUser();
 
         if (!$user) {
-            return new JsonResponse(['error' => 'User not authenticated'], 401);
+            return $this->handleResponse([],Response::HTTP_UNAUTHORIZED,'',self::ERRORMSG);
+        } else {
+            return $this->handleResponse([
+                'id' => $user->getId(),
+                'email' => $user->getEmail()
+            ],Response::HTTP_OK,'Success','');
         }
-
-        return new JsonResponse([
-            'id' => $user->getId(),
-            'email' => $user->getEmail()
-        ]);
     }
 
     #[Route('/user', name: 'user')]
@@ -39,5 +39,17 @@ final class HomeController extends AbstractController
     {
         $user = $doctrine->getRepository(User::class)->findall();
         return $this->json($user);
+    }
+
+    /***
+     * function to handle response of api
+     */
+    public function handleResponse($data,$status,$message,$error){
+        return new JsonResponse(
+            [
+                'data'=>$data,
+                'message' => $message,
+                'error'=>$error,
+            ],$status );
     }
 }
